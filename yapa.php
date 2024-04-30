@@ -32,7 +32,7 @@ class Yapa{
 		$this->url = $url;
 		$this->table = $table;
 		$this->table_o = $table;
-		$this->id = $config['id'] ?? $col_en[0] ?? '';
+		$this->id = $config['id'] ?? $col_en[0];
 		$this->ids = $this->split($this->id);
 		$this->concat_id = '`' . $this->id . '`';
 		$this->database = $medoo;
@@ -54,7 +54,7 @@ class Yapa{
 		}
 		
 		// separate label and info
-		$label = [[], []];
+		$label = [];
 		foreach($col_ch as $v){
 			$tmp = $this->split($v, 'label');
 			$label[0][] = $tmp[0] ?? '';
@@ -77,7 +77,7 @@ class Yapa{
 		}
 		
 		// type with attr
-		$attr = [[], []];
+		$attr = [];
 		foreach($type as $k=>$v){
 			$tmp = $v? $this->split($v, 'label'): '';
 			$attr[0][] = $tmp[0] ?? '';
@@ -649,7 +649,7 @@ class Yapa{
 	}
 	
 	public function getData($pdata){
-		
+		// echo json_encode($pdata);
 		if(!$this->auth[0]){ return;}
 		
 		$this->set_table([$this->table => $this->config['table'][$this->table] ?? '']);
@@ -669,8 +669,29 @@ class Yapa{
 			if($this->join[$i]){
 				if(!in_array($this->type[$i], ['checkbox', 'autocomplete', 'module'])){
 					$arr_tmp = $this->join[$i];
-					$arr_col[$i] = 't' . $i . '.' . $arr_tmp[1] . '(' . $this->col_en[$i] . ')';
-					$arr_chain['[>]' . $arr_tmp[0] . '(t' . $i . ')'] = [$this->col_en[$i] => $arr_tmp[2]];
+
+					#join 2個欄位以上
+					if(stripos($arr_tmp[2],";")){
+						$arr_tmp2 = explode(';', $arr_tmp[2]);
+						$arr_col[$i] = 't' . $i . '.' . $arr_tmp[1] . '(' . $this->col_en[$i] . ')';
+						$joinArr = [];
+						foreach ($arr_tmp2 as $key => $value) {
+
+							#join 欄位=固定位
+							if(stripos($value,"&")){
+								$arr_tmp3 = explode('&', $value);
+								$joinArr['AND'] = [$arr_tmp3[0] => $arr_tmp3[1]];
+							}else{
+								$joinArr[$value] = $value;
+							}
+							
+						}
+						$arr_chain['[>]' . $arr_tmp[0] . '(t' . $i . ')'] = $joinArr;
+					}else{
+
+						$arr_col[$i] = 't' . $i . '.' . $arr_tmp[1] . '(' . $this->col_en[$i] . ')';
+						$arr_chain['[>]' . $arr_tmp[0] . '(t' . $i . ')'] = [$this->col_en[$i] => $arr_tmp[2]];
+					}
 				}
 			}
 			// keep original id
@@ -826,6 +847,27 @@ class Yapa{
 		}
 		
 		$where = array_filter($pdata['where'] ?? []);
+
+		# 商品管理時，當 material.high_storage 排序時，則單以 high_storage 做排序
+		if(isset($where["ORDER"])){
+			$oldOrder = $where["ORDER"];
+			$newOrder = [];
+			foreach ($oldOrder as $key => $value) {
+				if($key == 'material.high_storage'){
+					$newOrder['high_storage'] = $value;
+				}else{
+					$newOrder[$key] = $value;
+				}
+			}
+			$where["ORDER"] = $newOrder;
+
+		}
+		// echo '<br />';
+		// echo '<br />';
+		// print_r($arr_col) ; 
+		// print_r($arr_chain) ; 
+		// echo $this->table;
+		// exit;
 		if($arr_chain){
 			$datas = $this->database->select($this->table, $arr_chain, $arr_col, $where);
 		}else{
@@ -1172,5 +1214,24 @@ class Yapa{
 		}
 		
 		return $this->database->query($sql, $arr);
+	}
+
+	public function setJoin($newJoin = []){
+		if(count($newJoin) >0 ){
+			$chain = [];
+			$tree = ['col' => null];
+			foreach($newJoin as $k=>$v){
+				$chain[] = $v? $this->split($v, 'chain'): '';
+				// tree view check
+				if($config['tree'] ?? 0){
+					$tree['col'] = $config['tree'];
+				}else{
+					if(($chain[$k][0] ?? '') == $this->table){
+						$tree['col'] = $k;
+					}
+				}
+			}
+			$this->join = $chain;
+		}
 	}
 }
