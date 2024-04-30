@@ -1,11 +1,11 @@
 {
-	"name": "kuofp/yapa",
+	"name": "killerdodo/yapa",
 	"type": "library",
 	"description": "Admin Panel Engine",
 	"keywords": ["admin"],
 	"license": "MIT",
 	"authors": [
-		{"name": "Frank Kuo", "email": "kuofp@cs.nctu.edu.tw"}
+		{"name": "killerdodo", "email": "sleep.ping@msa.hinet.net"}
 	],
 	"require": {
 		"php": ">=7",
